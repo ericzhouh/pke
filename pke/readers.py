@@ -10,7 +10,6 @@ import logging
 import xml.etree.ElementTree as etree
 import spacy
 from io import StringIO
-import io
 
 from pke.data_structures import Document
 
@@ -138,7 +137,7 @@ class RawTextReader(Reader):
         if language is None:
             self.language = 'en'
 
-    def read(self, text, **kwargs):
+   def read(self, text, **kwargs):
         """Read the input file and use spacy to pre-process.
 
         Spacy model selection: By default this function will load the spacy
@@ -156,18 +155,35 @@ class RawTextReader(Reader):
             spacy_model (model): an already loaded spacy model.
         """
 
-        tokenList = []
-        for line in io.StringIO(text):        
+        sentenceList = []
+        for line in StringIO(text):
+            line = line.strip()
             tmp = line.split('<phrase>')
-            if len(tmp) <= 2:
-                continue
             entityMentions = []
+            if len(tmp) <= 2:
+                #no phrase
+                other_parts = tmp[0].split(' ')
+                if(other_parts is not None):
+                    while('' in other_parts):
+                        other_parts.remove('')
+                    entityMentions += other_parts
             for seg in tmp:
                 temp2 = seg.split('</phrase>')
                 if (len(temp2) > 1):
-                    entityMentions.append(('_').join(temp2[0].split(' ')))
-            tokenList += entityMentions
-        sentenceList.append(tokenList)    
+                    entityMentions.append((' ').join(temp2[0].split(' ')))
+                    if (temp2[1] != ''):
+                        other_parts = temp2[1].split(' ')
+                        if(other_parts is not None):
+                            while('' in other_parts):
+                                other_parts.remove('')
+                            entityMentions += other_parts
+                elif temp2[0] != ' ' and temp2[0] != '':
+                    other_parts = temp2[0].split(' ')
+                    if(other_parts is not None):
+                        while('' in other_parts):
+                            other_parts.remove('')
+                        entityMentions += other_parts
+            sentenceList.append(entityMentions)
 
         nlp.spacy.load('en')
         nlp.tokenizer = nlp.tokenizer.tokens_from_list
